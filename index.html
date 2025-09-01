@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Marketing Uplift Predictor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        .card { background-color: white; border-radius: 0.75rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); border: 1px solid #e5e7eb; }
+        .btn { transition: all 0.2s ease-in-out; }
+        .btn:hover { transform: translateY(-2px); }
+        #predictionResult { transition: all 0.5s ease-in-out; }
+        .spinner { border: 4px solid rgba(0, 0, 0, 0.1); width: 24px; height: 24px; border-radius: 50%; border-left-color: #fff; animation: spin 1s ease infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 flex items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-2xl mx-auto">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-gray-900">Uplift Prediction Engine</h1>
+            <p class="text-lg text-gray-600 mt-2">Determine which users to target with your ad campaign.</p>
+        </header>
+
+        <main>
+            <div class="card p-6 md:p-8">
+                <div id="predictionSection">
+                    <h2 class="text-2xl font-semibold mb-2 border-b pb-2">Predict for a New User</h2>
+                    <p class="text-gray-600 mb-6">Enter a user's data to get a prediction from the model.</p>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label for="totalAdsInput" class="block text-sm font-medium text-gray-700">Total Ads Seen</label>
+                            <input type="number" id="totalAdsInput" value="50" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                        </div>
+                        <div>
+                            <label for="dayInput" class="block text-sm font-medium text-gray-700">Most Active Day</label>
+                            <select id="dayInput" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                                <option>Monday</option><option>Tuesday</option><option>Wednesday</option><option>Thursday</option><option>Friday</option><option selected>Saturday</option><option>Sunday</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="hourInput" class="block text-sm font-medium text-gray-700">Most Active Hour (0-23)</label>
+                            <input type="number" id="hourInput" value="18" min="0" max="23" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                        </div>
+                    </div>
+                    <div class="text-center mt-6">
+                        <button id="predictBtn" class="bg-green-600 text-white font-bold py-3 px-8 rounded-lg btn hover:bg-green-700 flex items-center justify-center w-full md:w-auto mx-auto">
+                            <span id="btnText">Predict</span>
+                            <div id="spinner" class="spinner hidden ml-3"></div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="predictionResult" class="card mt-6 p-6 text-center opacity-0 transform scale-95">
+                <h3 class="text-xl font-semibold mb-2">Prediction Result</h3>
+                <div id="resultContent"></div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const predictBtn = document.getElementById('predictBtn');
+            const predictionResult = document.getElementById('predictionResult');
+            const resultContent = document.getElementById('resultContent');
+            const btnText = document.getElementById('btnText');
+            const spinner = document.getElementById('spinner');
+
+            predictBtn.addEventListener('click', handlePrediction);
+
+            async function handlePrediction() {
+                // Show loading state
+                predictBtn.disabled = true;
+                btnText.textContent = 'Predicting...';
+                spinner.classList.remove('hidden');
+
+                const newUser = {
+                    'total ads': parseInt(document.getElementById('totalAdsInput').value, 10),
+                    'most ads day': document.getElementById('dayInput').value,
+                    'most ads hour': parseInt(document.getElementById('hourInput').value, 10)
+                };
+
+                try {
+                    // Send data to the Flask backend API
+                    const response = await fetch('/predict', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(newUser),
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    displayResult(data.segment, data.uplift_score);
+
+                } catch (error) {
+                    console.error("Prediction failed:", error);
+                    resultContent.innerHTML = `<p class="text-red-500">Prediction failed. Could not connect to the backend server. Make sure the Flask app is running.</p>`;
+                    predictionResult.classList.remove('opacity-0', 'scale-95');
+                    predictionResult.classList.add('opacity-100', 'scale-100');
+                } finally {
+                    // Hide loading state
+                    predictBtn.disabled = false;
+                    btnText.textContent = 'Predict';
+                    spinner.classList.add('hidden');
+                }
+            }
+
+            function displayResult(segment, uplift_score) {
+                const segmentInfo = {
+                    'Persuadables': { color: 'green', recommendation: 'TARGET', description: 'This user is likely to convert specifically because of the ad. A high-value target.' },
+                    'Sure Things': { color: 'blue', recommendation: 'IGNORE', description: 'This user is likely to convert anyway. Showing them an ad is a waste of budget.' },
+                    'Lost Causes': { color: 'gray', recommendation: 'IGNORE', description: 'This user is unlikely to convert, regardless of the ad. Do not spend money here.' },
+                    'Sleeping Dogs': { color: 'red', recommendation: 'AVOID', description: 'This user may be annoyed by the ad and become less likely to convert. Avoid targeting.' },
+                    'Neutral / Low Impact': { color: 'yellow', recommendation: 'LOW PRIORITY', description: 'This user shows little to no change in behavior when shown the ad.' }
+                };
+                
+                const info = segmentInfo[segment];
+                const colorClasses = {
+                    green: { bg: 'bg-green-100', text: 'text-green-800', border: 'border-green-500' },
+                    blue: { bg: 'bg-blue-100', text: 'text-blue-800', border: 'border-blue-500' },
+                    red: { bg: 'bg-red-100', text: 'text-red-800', border: 'border-red-500' },
+                    yellow: { bg: 'bg-yellow-100', text: 'text-yellow-800', border: 'border-yellow-500' },
+                    gray: { bg: 'bg-gray-100', text: 'text-gray-800', border: 'border-gray-500' }
+                };
+                const classes = colorClasses[info.color];
+
+                resultContent.innerHTML = `
+                    <div class="p-4 rounded-lg ${classes.bg} border-l-4 ${classes.border}">
+                        <p class="text-lg ${classes.text}">Predicted Segment: <strong class="font-bold text-xl">${segment}</strong></p>
+                        <p class="text-2xl font-bold ${classes.text} mt-2 py-2 px-4 inline-block rounded-md">${info.recommendation}</p>
+                        <p class="text-sm ${classes.text} mt-2">${info.description}</p>
+                        <p class="text-xs ${classes.text} mt-4 font-mono">Calculated Uplift Score: ${uplift_score.toFixed(5)}</p>
+                    </div>
+                `;
+
+                predictionResult.classList.remove('opacity-0', 'scale-95');
+                predictionResult.classList.add('opacity-100', 'scale-100');
+            }
+        });
+    </script>
+</body>
+</html>
