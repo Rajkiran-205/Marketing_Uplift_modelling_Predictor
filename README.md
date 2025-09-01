@@ -1,0 +1,3 @@
+This project successfully developed and deployed an end-to-end machine learning system to measure and predict the causal impact (uplift) of a marketing campaign. Moving beyond traditional A/B test analysis, which only measures average effects, this system identifies which specific users are most likely to convert because they saw an ad.
+
+The final deliverable is a functional web application, powered by a Python Flask backend, that allows marketing teams to get real-time predictions for new users. This enables a data-driven strategy to optimize ad spend by focusing resources on "Persuadable" customers, avoiding those who would convert anyway ("Sure Things") or those who react negatively ("Sleeping Dogs"), thereby maximizing marketing ROI.
